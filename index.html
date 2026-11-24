@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מעקב משימות</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='26' height='7' rx='2.5' fill='%23f29b1d'/%3E%3Crect x='3' y='12.5' width='26' height='7' rx='2.5' fill='%23e2445c'/%3E%3Crect x='3' y='21' width='26' height='7' rx='2.5' fill='%2300a865'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a calm, quick team tool; nothing to learn, everything one tap away.
+   IDEA: the wall-board grid where coloured status labels do the talking.
+   PICTURE: the board itself, full height, frozen header and task column.
+   COLOUR and TYPE: white or deep night ground, ink text, four vivid status fields; Rubik.
+   LAYOUT: slim title strip with a progress bar, then the scrolling grid edge to edge. */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#15171c);--ink:light-dark(#1c2130,#e8eaf0);--mute:light-dark(#687085,#959cae);
+--line:light-dark(#e3e6ee,#292d37);--soft:light-dark(#f4f6fa,#1d2027);--hover:light-dark(#f3f6fd,#1f232c);
+--pri:light-dark(#2459e0,#4d7cf5);--late:light-dark(#d32640,#ff6b7f);--soon:light-dark(#b66a00,#f0a63a);
+--todo:light-dark(#8a90a3,#6c7286);--stuck:#e2445c;--doing:#f29b1d;--done:#00a865;
+--shadow:0 18px 40px -12px rgb(12 16 30/.35),0 2px 8px rgb(12 16 30/.1);
+--c1:240px;--c2:150px;--c3:140px;--c4:140px}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Rubik,"Segoe UI",Arial,sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--pri);outline-offset:-2px}
+svg{display:block;flex:none}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:18px max(4vw,16px) 14px}
+.ttl{flex:1 1 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+h1{margin:0;font-size:clamp(24px,3.2vw,30px);line-height:1.05;font-weight:600;letter-spacing:-.01em}
+.sum{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute);white-space:nowrap}
+.bar{display:flex;width:clamp(90px,16vw,180px);height:8px;border-radius:99px;overflow:hidden;background:var(--soft);gap:2px}
+.bar i{background:var(--c);min-width:4px}
+.newb{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 16px 0 18px;border-radius:10px;background:var(--pri);color:#fff;font-weight:500;font-size:15px;box-shadow:0 2px 0 rgb(0 0 0/.08)}
+.newb:hover{filter:brightness(1.07)}
+.newb[hidden]{display:none}
+.note{margin:0 max(4vw,16px) 12px;padding:10px 14px;border-radius:10px;background:var(--soft);color:var(--ink);font-size:14px}
+.note[hidden]{display:none}
+
+.board{flex:1 1 auto;min-height:0;overflow:auto;border-top:1px solid var(--line);padding-bottom:96px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+table{border-collapse:separate;border-spacing:0;table-layout:fixed;width:max(100%,calc(var(--c1) + var(--c2) + var(--c3) + var(--c4)))}
+col.k2{width:var(--c2)}col.k3{width:var(--c3)}col.k4{width:var(--c4)}
+th,td{padding:0;height:54px;background:var(--bg);border-bottom:1px solid var(--line);border-inline-start:1px solid var(--line);vertical-align:middle;position:relative}
+.c1{position:sticky;inset-inline-start:0;z-index:1;border-inline-start:0;border-inline-end:1px solid var(--line)}
+tr>:nth-child(2){border-inline-start:0}
+thead th{position:sticky;top:0;z-index:2;height:44px;font-size:14px;font-weight:500;color:var(--mute)}
+thead th.c1{z-index:3}
+.board.sx .c1{box-shadow:-10px 0 12px -10px rgb(10 15 30/.3)}
+.sh{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;height:44px;padding:0 10px;white-space:nowrap}
+.c1 .sh{justify-content:flex-start;padding-inline-start:16px}
+.sh svg{opacity:0;transition:transform .15s,opacity .15s}
+.sh:hover svg{opacity:.45}
+th[aria-sort] .sh{color:var(--ink)}
+th[aria-sort] .sh svg{opacity:1}
+th[aria-sort=descending] .sh svg{transform:rotate(180deg)}
+@media(hover:hover){tbody tr:not(.sec):not(.msg):hover>td{background:var(--hover)}}
+
+.tname{display:block;width:100%;min-height:54px;padding:8px 16px;text-align:start;font-size:15.5px;line-height:1.35}
+.tname .tx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.is-done .tname{color:var(--mute)}
+.ph{color:var(--mute)}
+.edit{display:flex;align-items:center;gap:4px;padding:6px 6px 6px 8px;padding-inline-start:10px}
+.ein,.tx-in{flex:1;width:100%;font:inherit;font-size:16px;padding:8px 10px;border:1.5px solid var(--pri);border-radius:8px;background:var(--bg);color:var(--ink);outline:0}
+.ic{display:grid;place-items:center;width:40px;height:40px;border-radius:9px;color:var(--mute);flex:none}
+.ic:hover{background:var(--soft);color:var(--ink)}
+.ic.del:hover{color:var(--late)}
+
+.own{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 10px}
+.own .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.av{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;font-size:14px;font-weight:600;color:#fff;background:hsl(var(--h,220) 50% 50%)}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av.empty{background:none;border:1.5px dashed var(--mute);color:var(--mute)}
+
+.due{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;white-space:nowrap}
+.due .dv{display:flex;flex-direction:column;align-items:center}
+.due .rl{font-size:15px}
+.due .ab{font-size:13px;color:var(--mute);margin-top:2px}
+.due.late .rl{color:var(--late);font-weight:500}
+.due.soon .rl{color:var(--soon);font-weight:500}
+.due.done .rl,.due .dz{color:var(--mute)}
+.due .dz{opacity:.55}
+.due input{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;font-size:16px;-webkit-appearance:none;appearance:none;display:block;min-width:0}
+.due input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;cursor:pointer}
+.due input:disabled{cursor:default}
+@media(hover:hover){td:hover .due .dz{opacity:1}}
+
+[data-s=todo]{--c:var(--todo)}[data-s=stuck]{--c:var(--stuck)}[data-s=doing]{--c:var(--doing)}[data-s=done]{--c:var(--done)}
+.st{position:absolute;inset:0;background:var(--c);color:#fff;font-size:15px;font-weight:500;text-shadow:0 1px 1px rgb(0 0 0/.2);transition:filter .15s}
+.st:hover{filter:brightness(.93)}
+
+.sec td,.msg td{position:static;border-inline:0;background:var(--bg)}
+.sec td{height:auto;padding-top:34px}
+.secb{position:sticky;inset-inline-start:0;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px 0 16px;font-weight:600;font-size:17px;color:var(--done)}
+.secb .cnt{font-weight:400;font-size:14px;color:var(--mute)}
+.secb svg.ch{transition:transform .15s}
+.secb[aria-expanded=false] svg.ch{transform:rotate(90deg)}
+.msg td{height:70px;color:var(--mute);font-size:15px}
+.msg .mi{position:sticky;inset-inline-start:0;display:inline-block;padding:0 16px}
+
+.addw{display:flex;align-items:center;height:54px}
+#addin{flex:1;width:100%;height:100%;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;padding:0 16px;outline:0}
+#addin::placeholder{color:var(--mute)}
+#addin:focus{background:var(--soft)}
+.go{display:none;place-items:center;width:38px;height:38px;margin-inline-end:8px;border-radius:9px;background:var(--pri);color:#fff;flex:none}
+.addw.has .go{display:grid}
+body.ro .addrow{display:none}
+body.ro .tname,body.ro .own,body.ro .st{cursor:default}
+
+.scrim{position:fixed;inset:0;z-index:40}
+.pop{position:fixed;z-index:41;width:264px;max-height:calc(100dvh - 16px);overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:8px}
+.scrim[hidden],.pop[hidden]{display:none}
+.phd{display:flex;align-items:center;gap:8px;padding:4px 4px 8px 4px}
+.phd div{flex:1;display:flex;flex-direction:column}
+.phd b{font-weight:600;font-size:15px}
+.phd span{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sto{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:44px;margin-top:6px;border-radius:9px;background:var(--c);color:#fff;font-weight:500;text-shadow:0 1px 1px rgb(0 0 0/.2)}
+.sto:hover{filter:brightness(.93)}
+.prow{display:flex;align-items:center;gap:2px}
+.pr{flex:1;display:flex;align-items:center;gap:10px;min-height:46px;padding:4px 8px;border-radius:9px;text-align:start}
+.pr:hover{background:var(--soft)}
+.pr .pn{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr .ck{color:var(--pri)}
+.newp{display:flex;align-items:center;gap:8px;width:100%;min-height:46px;margin-top:4px;padding:4px 10px;border-top:1px solid var(--line);border-radius:0 0 9px 9px;color:var(--pri);font-weight:500}
+.pf{display:grid;gap:14px;padding:4px 4px 6px}
+.up{display:flex;align-items:center;gap:12px;cursor:pointer;color:var(--pri);font-weight:500;font-size:15px}
+.up input{position:absolute;width:1px;height:1px;opacity:0}
+.upc{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--soft);border:1.5px dashed var(--mute);color:var(--mute);flex:none}
+.upc img{width:100%;height:100%;object-fit:cover}
+.up:focus-within .upc{outline:2px solid var(--pri);outline-offset:2px}
+.pa{display:flex;flex-wrap:wrap;gap:8px}
+.btn{height:42px;padding:0 16px;border-radius:9px;background:var(--soft);font-weight:500;font-size:15px}
+.btn.pri{background:var(--pri);color:#fff}
+.btn.danger{color:var(--late);margin-inline-start:auto}
+.btn.danger.sure{background:var(--late);color:#fff}
+.shake{animation:sh .3s}
+@keyframes sh{25%{transform:translateX(5px)}75%{transform:translateX(-5px)}}
+
+.toast{position:fixed;z-index:50;inset-inline:0;bottom:18px;margin:auto;width:max-content;max-width:calc(100% - 32px);display:flex;align-items:center;gap:14px;padding:10px 12px 10px 18px;padding-inline-start:18px;border-radius:12px;background:light-dark(#1c2130,#e8eaf0);color:light-dark(#fff,#15171c);font-size:15px;box-shadow:var(--shadow)}
+.toast[hidden]{display:none}
+.toast button{height:36px;padding:0 12px;border-radius:8px;font-weight:600;color:light-dark(#9db8ff,#2459e0)}
+
+@media(min-width:900px){.board{padding-inline:max(3vw,24px)}.top,.note{margin-inline:0}.top{padding-inline:max(3vw,24px)}.note{margin-inline:max(3vw,24px)}}
+@media(max-width:639px){
+:root{--c1:44vw;--c2:126px;--c3:118px;--c4:116px}
+.top{padding-top:14px}
+.newb{height:40px;padding:0 12px 0 14px;font-size:14px}
+.tname{font-size:15px;padding:8px 12px}
+.own{gap:6px;padding:0 6px}
+.own .nm{font-size:14px}
+.av{width:28px;height:28px}
+.st{font-size:14px}
+.scrim{background:rgb(8 10 18/.4)}
+.pop{inset:auto 0 0 0!important;width:auto;max-height:82dvh;border-radius:20px 20px 0 0;border:0;padding:8px 14px 22px;animation:up .22s cubic-bezier(.2,.8,.3,1)}
+.pop::before{content:"";display:block;width:40px;height:4px;border-radius:9px;background:var(--line);margin:2px auto 10px}
+.phd b{font-size:17px}
+.sto{height:50px;font-size:16px}
+}
+@keyframes up{from{transform:translateY(40px);opacity:.3}}
+@media(prefers-reduced-motion:reduce){.pop,.shake{animation:none}}
+</style>
+</head>
+<body class="ro">
+<header class="top">
+  <div class="ttl"><h1>מעקב משימות</h1><div class="sum" id="sum"></div></div>
+  <button class="newb" id="newb" type="button" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>משימה חדשה</button>
+</header>
+<p class="note" id="note" role="status" hidden></p>
+<main class="board" id="board">
+  <table id="tb">
+    <colgroup><col class="k1"><col class="k2"><col class="k3"><col class="k4"></colgroup>
+    <thead><tr>
+      <th class="c1" data-k="title"><button class="sh" data-k="title" type="button">משימה<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></th>
+      <th data-k="owner"><button class="sh" data-k="owner" type="button">בעלות<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></th>
+      <th data-k="due"><button class="sh" data-k="due" type="button">תאריך יעד<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></th>
+      <th data-k="status"><button class="sh" data-k="status" type="button">סטטוס<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></th>
+    </tr></thead>
+    <tbody id="act"><tr class="msg"><td colspan="4"><span class="mi">טוען משימות…</span></td></tr></tbody>
+    <tbody id="addb"><tr class="addrow"><td class="c1"><div class="addw" id="addw"><input id="addin" type="text" maxlength="200" placeholder="+ הוספת משימה" enterkeyhint="enter" autocomplete="off" aria-label="משימה חדשה"><button class="go" id="addgo" type="button" aria-label="הוספה"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div></td><td colspan="3"></td></tr></tbody>
+    <tbody id="dn"></tbody>
+  </table>
+</main>
+<div class="scrim" id="scrim" hidden></div>
+<div class="pop" id="pop" role="dialog" aria-modal="true" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store={get(k){try{return JSON.parse(localStorage.getItem('tb:'+k))}catch(e){return null}},set(k,v){try{localStorage.setItem('tb:'+k,JSON.stringify(v))}catch(e){}}};
+const sv=(d,w=2.2)=>`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const I={
+  check:'<span class="ck">'+sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>',2.6)+'</span>',
+  trash:sv('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5A1.5 1.5 0 008.5 21h7a1.5 1.5 0 001.5-1.5L18 7M9 7V4.5A1.5 1.5 0 0110.5 3h3A1.5 1.5 0 0115 4.5V7"/>'),
+  pen:sv('<path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4zM13.5 6.5l4 4"/>'),
+  plus:sv('<path d="M12 5v14M5 12h14"/>',2.4),
+  x:sv('<path d="M6 6l12 12M18 6L6 18"/>'),
+  user:sv('<circle cx="12" cy="8.5" r="3.5"/><path d="M5.5 19.5a6.5 6.5 0 0113 0"/>',1.8),
+  cam:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 015.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0120 8.5v9a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 17.5z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  cal:sv('<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',1.8),
+  chev:'<svg class="ch" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
+};
+const ST=[{k:'todo',l:'טרם'},{k:'stuck',l:'תקוע'},{k:'doing',l:'בביצוע'},{k:'done',l:'הושלם'}];
+const stI=k=>Math.max(0,ST.findIndex(s=>s.k===k));
+const stOf=t=>ST[stI(t.status)].k;
+
+const act=$('#act'),dn=$('#dn'),board=$('#board'),tb=$('#tb'),pop=$('#pop'),scrim=$('#scrim'),note=$('#note'),toastEl=$('#toast'),addin=$('#addin'),addw=$('#addw');
+const wide=matchMedia('(min-width: 640px)');
+const CDN='https://www.gstatic.com/firebasejs/13.4.0/';
+let fs=null,F=null,canWrite=false,ready=false,tasks=new Map(),people=new Map();
+let sort=store.get('sort')||{k:'created',d:1},doneOpen=store.get('doneOpen')!==false;
+let editing=null,dirty=false,ps=null;
+const dueT={};
+
+/* ---------- helpers ---------- */
+const first=n=>String(n||'').trim().split(/\s+/)[0]||'';
+const okPhoto=s=>typeof s==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s);
+const hue=id=>{let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))%360;return h};
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const parseD=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const dayDiff=s=>{const d=parseD(s);return d?Math.round((d-today())/864e5):null};
+const fmt=d=>d.getDate()+'.'+(d.getMonth()+1)+(d.getFullYear()!==new Date().getFullYear()?'.'+String(d.getFullYear()).slice(2):'');
+function rel(n){
+  if(n===0)return'היום';if(n===1)return'מחר';if(n===-1)return'אתמול';
+  const a=Math.abs(n);let t;
+  if(a===2)t='יומיים';
+  else if(a<14)t=a+' ימים';
+  else if(a<60){const w=Math.round(a/7);t=w===2?'שבועיים':w+' שבועות'}
+  else{const m=Math.round(a/30.4);t=m===2?'חודשיים':m+' חודשים'}
+  return(n>0?'עוד ':'לפני ')+t;
+}
+function avatar(p){
+  if(!p)return`<span class="av empty">${I.user}</span>`;
+  if(okPhoto(p.photo))return`<span class="av"><img src="${esc(p.photo)}" alt=""></span>`;
+  return`<span class="av" style="--h:${hue(p.id)}">${esc(first(p.name).slice(0,1))}</span>`;
+}
+const dueCls=t=>{const n=dayDiff(t.due);if(n===null)return'empty';if(t.status==='done')return'done';return n<0?'late':n<=1?'soon':''};
+function dueInner(t){
+  const d=parseD(t.due);if(!d)return`<span class="dz">${I.cal}</span>`;
+  if(t.status==='done')return`<span class="rl">${fmt(d)}</span>`;
+  return`<span class="rl">${rel(dayDiff(t.due))}</span><span class="ab">${fmt(d)}</span>`;
+}
+const ownerName=t=>{const p=people.get(t.owner);return p?first(p.name):''};
+
+/* ---------- sorting ---------- */
+const base=(a,b)=>(a.createdAt||0)-(b.createdAt||0)||(a.id<b.id?-1:1);
+function cmp(a,b){
+  const{k,d}=sort;
+  if(k==='title')return d*String(a.title||'').localeCompare(String(b.title||''),'he')||base(a,b);
+  if(k==='owner'){const x=ownerName(a),y=ownerName(b);if(!x!==!y)return x?-1:1;return d*x.localeCompare(y,'he')||base(a,b)}
+  if(k==='due'){const x=parseD(a.due)?a.due:'',y=parseD(b.due)?b.due:'';if(!x!==!y)return x?-1:1;return d*(x<y?-1:x>y?1:0)||base(a,b)}
+  if(k==='status')return d*(stI(a.status)-stI(b.status))||base(a,b);
+  return base(a,b);
+}
+const cmpDone=(a,b)=>sort.k==='created'?(b.doneAt||0)-(a.doneAt||0)||base(a,b):cmp(a,b);
+function setSort(k){
+  if(sort.k!==k)sort={k,d:1};else if(sort.d===1)sort={k,d:-1};else sort={k:'created',d:1};
+  store.set('sort',sort);render(true);
+}
+
+/* ---------- render ---------- */
+const msgRow=t=>`<tr class="msg"><td colspan="4"><span class="mi">${esc(t)}</span></td></tr>`;
+function row(t){
+  const s=stOf(t),p=people.get(t.owner),dis=canWrite?'':' disabled';
+  return`<tr data-id="${esc(t.id)}"${s==='done'?' class="is-done"':''}>
+<td class="c1"><button class="tname" data-act="rename" type="button" title="${esc(t.title)}"><span class="tx">${t.title?esc(t.title):'<span class="ph">ללא שם</span>'}</span></button></td>
+<td><button class="own" data-act="owner" type="button" aria-label="בעלות: ${esc(p?first(p.name):'ללא')}">${avatar(p)}<span class="nm${p?'':' ph'}">${p?esc(first(p.name)):''}</span></button></td>
+<td><div class="due ${dueCls(t)}"><span class="dv">${dueInner(t)}</span><input type="date" data-act="due" value="${parseD(t.due)?esc(t.due):''}" aria-label="תאריך יעד"${dis}></div></td>
+<td><button class="st" data-act="status" data-s="${s}" type="button">${ST[stI(s)].l}</button></td>
+</tr>`;
+}
+const busy=()=>editing!==null||(document.activeElement&&document.activeElement.matches&&document.activeElement.matches('#tb input[type=date]'));
+function render(force){
+  if(!force&&busy()){dirty=true;return}
+  dirty=false;
+  const all=[...tasks.values()];
+  const a=all.filter(t=>stOf(t)!=='done').sort(cmp),d=all.filter(t=>stOf(t)==='done').sort(cmpDone);
+  let h='';
+  if(!ready)h=msgRow('טוען משימות…');
+  else if(!a.length)h=msgRow(!fs?'אין חיבור למסד הנתונים.':d.length?'כל המשימות הושלמו. אפשר להוסיף חדשה למטה.':canWrite?'עוד אין משימות. כתבו את הראשונה בשורה למטה.':'עוד אין משימות.');
+  act.innerHTML=h+a.map(row).join('');
+  dn.innerHTML=d.length?`<tr class="sec"><td colspan="4"><button class="secb" type="button" aria-expanded="${doneOpen}">${I.chev}הושלמו<span class="cnt">${d.length}</span></button></td></tr>`+(doneOpen?d.map(row).join(''):''):'';
+  for(const th of tb.querySelectorAll('thead th')){
+    if(th.dataset.k===sort.k)th.setAttribute('aria-sort',sort.d===1?'ascending':'descending');else th.removeAttribute('aria-sort');
+  }
+  const c=ST.map(s=>all.filter(t=>stOf(t)===s.k).length);
+  $('#sum').innerHTML=all.length?`<span class="bar" title="${ST.map((s,i)=>s.l+': '+c[i]).join(' · ')}">${ST.map((s,i)=>c[i]?`<i data-s="${s.k}" style="flex:${c[i]}"></i>`:'').join('')}</span><span>${c[3]} מתוך ${all.length} הושלמו</span>`:'';
+}
+document.addEventListener('focusout',()=>setTimeout(()=>{if(dirty&&!busy())render()},0));
+
+/* ---------- writes ---------- */
+function fire(pr){
+  pr.catch(e=>{
+    const c=String(e&&e.code||'');
+    if(c.includes('permission-denied'))toast('מסד הנתונים דחה את השינוי. בדקו שחוקי האבטחה הועתקו (firestore.rules).');
+    else if(c.includes('not-found'))toast('המשימה הזו כבר נמחקה.');
+    else if(c.includes('resource-exhausted'))toast('נגמרה המכסה היומית החינמית של Firebase. נסו שוב מחר.');
+    else toast('השינוי לא נשמר. נסו שוב.');
+  });
+}
+const tdoc=id=>F.doc(fs,'tasks',id);
+function patch(id,p){const t=tasks.get(id);if(!t||!fs)return;Object.assign(t,p);fire(F.updateDoc(tdoc(id),p))}
+function setStatus(id,k){
+  const t=tasks.get(id);if(!t||stOf(t)===k)return;
+  const prev={status:stOf(t),doneAt:t.doneAt??null};
+  patch(id,{status:k,doneAt:k==='done'?Date.now():null});render();
+  if(k==='done')toast('המשימה עברה להושלמו',()=>{patch(id,prev);render()});
+}
+function setOwner(id,pid){const t=tasks.get(id);if(!t||(t.owner||null)===pid)return;patch(id,{owner:pid});render()}
+function addTask(){
+  const title=addin.value.trim();if(!title||!fs||!canWrite)return;
+  const ref=F.doc(F.collection(fs,'tasks'));
+  const data={title,owner:null,due:null,status:'todo',createdAt:Date.now(),doneAt:null};
+  tasks.set(ref.id,{...data,id:ref.id});
+  fire(F.setDoc(ref,data));
+  addin.value='';addw.classList.remove('has');render(true);
+  addin.scrollIntoView({block:'nearest'});
+}
+function delTask(id){
+  const t=tasks.get(id);if(!t)return;
+  const{id:_,...data}=t;
+  tasks.delete(id);editing=null;render(true);
+  fire(F.deleteDoc(tdoc(id)));
+  toast('המשימה נמחקה',()=>{tasks.set(id,{...data,id});render();fire(F.setDoc(tdoc(id),data))});
+}
+
+/* ---------- inline rename ---------- */
+function startEdit(id,td){
+  if(editing!==null){endEdit(true);td=tb.querySelector(`tr[data-id="${CSS.escape(id)}"] td.c1`)}
+  const t=tasks.get(id);if(!t||!td)return;
+  editing=id;
+  td.innerHTML=`<div class="edit"><input class="ein" type="text" maxlength="200" enterkeyhint="done" aria-label="שם המשימה" value="${esc(t.title)}"><button class="ic del" type="button" aria-label="מחיקת המשימה" title="מחיקה">${I.trash}</button></div>`;
+  const i=td.querySelector('input'),b=td.querySelector('button');
+  i.focus();i.select();
+  i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();endEdit(true)}else if(e.key==='Escape'){e.preventDefault();endEdit(false)}});
+  i.addEventListener('blur',()=>setTimeout(()=>{if(editing===id)endEdit(true)},150));
+  b.addEventListener('pointerdown',e=>e.preventDefault());
+  b.addEventListener('mousedown',e=>e.preventDefault());
+  b.addEventListener('click',()=>delTask(id));
+}
+function endEdit(commit){
+  if(editing===null)return;
+  const id=editing,i=tb.querySelector('.ein'),v=(i?i.value:'').trim(),t=tasks.get(id);
+  editing=null;
+  if(commit&&t&&v&&v!==t.title)patch(id,{title:v});
+  render(true);
+}
+
+/* ---------- popover / sheet ---------- */
+const head=(b,s)=>`<div class="phd"><div><b>${esc(b)}</b>${s?`<span>${esc(s)}</span>`:''}</div><button class="ic" data-close type="button" aria-label="סגירה">${I.x}</button></div>`;
+function popStatus(t){
+  return head('סטטוס',t.title)+ST.map(s=>`<button class="sto" type="button" data-st="${s.k}" data-s="${s.k}">${s.l}${stOf(t)===s.k?sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>',2.8):''}</button>`).join('');
+}
+function popOwner(t){
+  if(ps.form)return popForm();
+  const list=[...people.values()].sort((a,b)=>first(a.name).localeCompare(first(b.name),'he')||base(a,b));
+  return head('בעלות',t.title)+
+  `<div class="prow"><button class="pr" type="button" data-pick="">${avatar(null)}<span class="pn">ללא שיוך</span>${people.has(t.owner)?'':I.check}</button></div>`+
+  list.map(p=>`<div class="prow"><button class="pr" type="button" data-pick="${esc(p.id)}">${avatar(p)}<span class="pn">${esc(first(p.name))}</span>${t.owner===p.id?I.check:''}</button><button class="ic" type="button" data-editp="${esc(p.id)}" aria-label="עריכת ${esc(first(p.name))}" title="עריכה">${I.pen}</button></div>`).join('')+
+  `<button class="newp" type="button" data-newp>${I.plus}אדם חדש</button>`;
+}
+function popForm(){
+  const f=ps.form;
+  return head(f.id?'עריכת אדם':'אדם חדש')+`<div class="pf">
+<label class="up"><input type="file" accept="image/*" data-photo aria-label="העלאת תמונה"><span class="upc">${f.photo?`<img src="${esc(f.photo)}" alt="">`:I.cam}</span>${f.photo?'החלפת תמונה':'הוספת תמונה'}</label>
+<input class="tx-in" type="text" data-pname maxlength="24" placeholder="שם פרטי" autocomplete="off" enterkeyhint="done" value="${esc(f.name)}" aria-label="שם פרטי">
+<div class="pa"><button class="btn pri" type="button" data-psave>שמירה</button><button class="btn" type="button" data-pcancel>ביטול</button>${f.id?`<button class="btn danger${f.del?' sure':''}" type="button" data-pdel>${f.del?'בטוח? למחוק':'מחיקה'}</button>`:''}</div></div>`;
+}
+function drawPop(){
+  if(!ps)return;
+  const t=tasks.get(ps.id);if(!t){closePop();return}
+  pop.innerHTML=ps.kind==='status'?popStatus(t):popOwner(t);
+  place();
+}
+function place(){
+  if(!ps)return;
+  if(!wide.matches){pop.style.top=pop.style.left='';return}
+  const r=ps.rect,w=pop.offsetWidth,h=pop.offsetHeight;
+  let top=r.bottom+6;if(top+h>innerHeight-8)top=Math.max(8,r.top-h-6);
+  let left=r.left+r.width/2-w/2;left=Math.min(Math.max(8,left),innerWidth-w-8);
+  pop.style.top=top+'px';pop.style.left=left+'px';
+}
+function openPop(kind,id,el){
+  ps={kind,id,rect:el.getBoundingClientRect(),form:null};
+  pop.hidden=false;scrim.hidden=false;pop.setAttribute('aria-label',kind==='status'?'סטטוס':'בעלות');
+  drawPop();
+  const f=pop.querySelector('[data-st],[data-pick]');if(f)f.focus({preventScroll:true});
+}
+function closePop(back){
+  if(!ps)return;const{kind,id}=ps;ps=null;pop.hidden=true;scrim.hidden=true;pop.innerHTML='';
+  if(back){const b=tb.querySelector(`tr[data-id="${CSS.escape(id)}"] [data-act="${kind}"]`);if(b)b.focus({preventScroll:true})}
+}
+async function toAvatar(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});
+    const S=128,c=document.createElement('canvas');c.width=c.height=S;
+    const g=c.getContext('2d'),w=img.naturalWidth,h=img.naturalHeight,m=Math.min(w,h);
+    g.fillStyle='#fff';g.fillRect(0,0,S,S);
+    g.drawImage(img,(w-m)/2,(h-m)/2,m,m,0,0,S,S);
+    return c.toDataURL('image/jpeg',.8);
+  }finally{URL.revokeObjectURL(url)}
+}
+function savePerson(){
+  const f=ps.form,inp=pop.querySelector('[data-pname]'),name=first(inp?inp.value:f.name);
+  if(!name){if(inp){inp.focus();inp.classList.remove('shake');void inp.offsetWidth;inp.classList.add('shake')}return}
+  if(f.id){
+    const p=people.get(f.id);if(p)Object.assign(p,{name,photo:f.photo||''});
+    fire(F.updateDoc(F.doc(fs,'people',f.id),{name,photo:f.photo||''}));
+    ps.form=null;drawPop();render();
+  }else{
+    const ref=F.doc(F.collection(fs,'people')),data={name,photo:f.photo||'',createdAt:Date.now()};
+    people.set(ref.id,{...data,id:ref.id});
+    fire(F.setDoc(ref,data));
+    const tid=ps.id;closePop();setOwner(tid,ref.id);
+  }
+}
+pop.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);let b;
+  if(!ps)return;
+  if(q('[data-close]'))return closePop(true);
+  if(b=q('[data-st]')){const id=ps.id;closePop();setStatus(id,b.dataset.st);return}
+  if(b=q('[data-pick]')){const id=ps.id;closePop();setOwner(id,b.dataset.pick||null);return}
+  if(b=q('[data-editp]')){const p=people.get(b.dataset.editp);if(!p)return;ps.form={id:p.id,name:first(p.name),photo:okPhoto(p.photo)?p.photo:'',del:false};drawPop();return}
+  if(q('[data-newp]')){ps.form={id:null,name:'',photo:'',del:false};drawPop();const n=pop.querySelector('[data-pname]');if(n)n.focus();return}
+  if(q('[data-pcancel]')){ps.form=null;drawPop();return}
+  if(q('[data-psave]'))return savePerson();
+  if(q('[data-pdel]')){
+    if(!ps.form.del){ps.form.name=(pop.querySelector('[data-pname]')||{}).value||ps.form.name;ps.form.del=true;drawPop();return}
+    const pid=ps.form.id;people.delete(pid);fire(F.deleteDoc(F.doc(fs,'people',pid)));
+    ps.form=null;drawPop();render();
+  }
+});
+pop.addEventListener('input',e=>{if(ps&&ps.form&&e.target.matches('[data-pname]'))ps.form.name=e.target.value});
+pop.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-pname]')){e.preventDefault();savePerson()}});
+pop.addEventListener('change',async e=>{
+  if(!e.target.matches('[data-photo]')||!ps||!ps.form)return;
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  try{const url=await toAvatar(f);if(ps&&ps.form){ps.form.photo=url;drawPop()}}catch(_){toast('לא הצלחתי לקרוא את התמונה. נסו קובץ אחר.')}
+});
+scrim.addEventListener('click',()=>closePop());
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ps)closePop(true)});
+board.addEventListener('scroll',()=>{board.classList.toggle('sx',Math.abs(board.scrollLeft)>2);if(ps&&wide.matches)closePop()},{passive:true});
+addEventListener('resize',()=>{if(ps)closePop()});
+
+/* ---------- table events ---------- */
+tb.addEventListener('click',e=>{
+  const sh=e.target.closest('.sh');if(sh)return setSort(sh.dataset.k);
+  if(e.target.closest('.secb')){doneOpen=!doneOpen;store.set('doneOpen',doneOpen);return render(true)}
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const tr=b.closest('tr'),id=tr&&tr.dataset.id;if(!id||!tasks.has(id))return;
+  const a=b.dataset.act;
+  if(a==='due'){if(canWrite&&b.showPicker){try{b.showPicker()}catch(_){}}return}
+  if(!canWrite)return;
+  if(a==='rename')startEdit(id,b.closest('td'));
+  else openPop(a,id,b);
+});
+tb.addEventListener('change',e=>{
+  const i=e.target;if(!i.matches('input[type=date]'))return;
+  const id=i.closest('tr').dataset.id,t=tasks.get(id);if(!t)return;
+  const v=parseD(i.value)?i.value:null;
+  t.due=v;dirty=true;
+  const box=i.closest('.due');box.className='due '+dueCls(t);box.querySelector('.dv').innerHTML=dueInner(t);
+  clearTimeout(dueT[id]);dueT[id]=setTimeout(()=>{const c=tasks.get(id);if(c)fire(F.updateDoc(tdoc(id),{due:c.due??null}))},350);
+});
+addin.addEventListener('input',()=>addw.classList.toggle('has',!!addin.value.trim()));
+addin.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();addTask()}});
+$('#addgo').addEventListener('pointerdown',e=>e.preventDefault());
+$('#addgo').addEventListener('click',()=>{addTask();addin.focus()});
+$('#newb').addEventListener('click',()=>{if(!canWrite)return;addin.scrollIntoView({block:'center',behavior:'smooth'});addin.focus({preventScroll:true})});
+
+/* ---------- toast & notes ---------- */
+let tt;
+function toast(msg,undo){
+  toastEl.innerHTML=`<span>${esc(msg)}</span>${undo?'<button type="button">ביטול</button>':''}`;
+  toastEl.hidden=false;
+  const b=toastEl.querySelector('button');if(b)b.onclick=()=>{undo();toastEl.hidden=true};
+  clearTimeout(tt);tt=setTimeout(()=>{toastEl.hidden=true},5500);
+}
+function showNote(t){note.textContent=t||'';note.hidden=!t}
+function setRO(ro){
+  canWrite=!ro;document.body.classList.toggle('ro',ro);$('#newb').hidden=ro;
+  render(true);
+}
+
+/* ---------- data ---------- */
+async function init(){
+  const title=typeof boardTitle==='string'?boardTitle.trim():'';
+  if(title){$('h1').textContent=title;document.title=title}
+  const cfg=typeof firebaseConfig==='object'&&firebaseConfig?firebaseConfig:null;
+  if(!cfg||!cfg.apiKey||!cfg.projectId||/[א-ת]|PASTE/.test(cfg.apiKey)){
+    ready=true;showNote('כמעט מוכן: צריך להדביק את פרטי Firebase בקובץ firebase-config.js. ההוראות נמצאות בקובץ README.');return render(true);
+  }
+  const slow=setTimeout(()=>{if(!ready)showNote('הטעינה לוקחת יותר מהרגיל. בדקו את החיבור לאינטרנט.')},9000);
+  try{
+    const[A,FS]=await Promise.all([import(CDN+'firebase-app.js'),import(CDN+'firebase-firestore.js')]);
+    F=FS;
+    const app=A.initializeApp(cfg);
+    try{fs=F.initializeFirestore(app,{localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})})}
+    catch(_){fs=F.getFirestore(app)}
+  }catch(e){
+    clearTimeout(slow);ready=true;showNote('לא הצלחתי לטעון את Firebase. בדקו את החיבור ורעננו את העמוד.');return render(true);
+  }
+  setRO(false);
+  let offT=null;
+  const net=m=>{
+    if(m.fromCache){if(!offT)offT=setTimeout(()=>showNote('אין חיבור כרגע. מוצגת הגרסה האחרונה שנשמרה במכשיר, ושינויים יישלחו כשהחיבור יחזור.'),7000)}
+    else{clearTimeout(offT);offT=null;showNote('')}
+  };
+  const fail=e=>{
+    clearTimeout(slow);ready=true;
+    const c=String(e&&e.code||'');
+    showNote(c.includes('permission-denied')?'אין הרשאה לקרוא את הנתונים. בדקו שחוקי האבטחה מקובץ firestore.rules פורסמו ב-Firebase.':'החיבור למסד הנתונים נקטע. רעננו את העמוד.');
+    render(true);
+  };
+  const opts={includeMetadataChanges:true};
+  F.onSnapshot(F.collection(fs,'tasks'),opts,s=>{
+    tasks=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));
+    if(editing!==null&&!tasks.has(editing))editing=null;
+    if(ps&&!tasks.has(ps.id))closePop();
+    clearTimeout(slow);ready=true;net(s.metadata);render();
+  },fail);
+  F.onSnapshot(F.collection(fs,'people'),opts,s=>{
+    people=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));
+    if(ps&&!ps.form)drawPop();
+    render();
+  },fail);
+}
+render(true);
+init();
+}
+</script>
+</body>
+</html>

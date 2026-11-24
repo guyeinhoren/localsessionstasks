@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// כל מי שיש לו את הקישור יכול לקרוא, להוסיף, לערוך ולמחוק משימות ואנשים, בלי חשבון.
+// החוקים רק מוודאים שהנתונים במבנה הנכון, כדי שאי אפשר יהיה לשמור במאגר דברים אחרים.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function validTask(d) {
+      return d.keys().hasOnly(['title', 'owner', 'due', 'status', 'createdAt', 'doneAt'])
+        && d.get('title', null) is string && d.title.size() <= 300
+        && (d.get('owner', null) == null || (d.owner is string && d.owner.size() <= 60))
+        && (d.get('due', null) == null || (d.due is string && d.due.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')))
+        && d.get('status', null) in ['todo', 'stuck', 'doing', 'done']
+        && d.get('createdAt', null) is number
+        && (d.get('doneAt', null) == null || d.doneAt is number);
+    }
+
+    function validPerson(d) {
+      return d.keys().hasOnly(['name', 'photo', 'createdAt'])
+        && d.get('name', null) is string && d.name.size() > 0 && d.name.size() <= 40
+        && (d.get('photo', '') is string && d.get('photo', '').size() <= 60000)
+        && d.get('createdAt', null) is number;
+    }
+
+    match /tasks/{id} {
+      allow read, delete: if true;
+      allow create, update: if validTask(request.resource.data);
+    }
+
+    match /people/{id} {
+      allow read, delete: if true;
+      allow create, update: if validPerson(request.resource.data);
+    }
+  }
+}
